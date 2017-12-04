@@ -185,17 +185,9 @@ _go_repository_select = repository_rule(
 )
 
 _GO_VERSIONS_SHA256 = {
-    '1.7.5': {
-        'linux': '2e4dd6c44f0693bef4e7b46cc701513d74c3cc44f2419bf519d7868b12931ac3',
-        'darwin': '2e2a5e0a5c316cf922cf7d59ee5724d49fc35b07a154f6c4196172adfc14b2ca',
-    },
-    '1.8': {
-        'linux': '53ab94104ee3923e228a2cb2116e5e462ad3ebaeea06ff04463479d7f12d27ca',
-        'darwin': '6fdc9f98b76a28655a8770a1fc8197acd8ef746dd4d8a60589ce19604ba2a120',
-    },
-    '1.8.1': {
-        'linux': 'a579ab19d5237e263254f1eac5352efcf1d70b9dacadb6d6bb12b0911ede8994',
-        'darwin': '25b026fe2f4de7c80b227f69588b06b93787f5b5f134fbf2d652926c08c04bcd',
+    '1.8.3': {
+        'linux': '1862f4c3d3907e59b04a757cfda0ea7aa9ef39274af99a784f5be843c80c6772',
+        'darwin': 'f20b92bc7d4ab22aa18270087c478a74463bd64a893a94264434a38a4b167c05',
     },
 }
 
@@ -205,7 +197,7 @@ def go_repositories(
     go_darwin = None):
 
   if not go_version and not go_linux and not go_darwin:
-    go_version = "1.8.1"
+    go_version = "1.8.3"
 
   if go_version:
     if go_linux:
