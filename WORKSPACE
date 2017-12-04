@@ -1,6 +1,7 @@
 workspace(name = "io_bazel_rules_go")
 
 load("//go:def.bzl", "go_repositories", "new_go_repository")
+
 load("//go/private:go_repositories.bzl", "go_internal_tools_deps")
 
 go_repositories()
@@ -12,9 +13,3 @@ new_go_repository(
 )
 
 go_internal_tools_deps()
-
-# Protocol buffers
-
-load("//proto:go_proto_library.bzl", "go_proto_repositories")
-
-go_proto_repositories()

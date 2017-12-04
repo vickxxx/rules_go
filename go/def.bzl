@@ -226,11 +226,11 @@ def _emit_go_pack_action(ctx, out_lib, objects):
 def go_library_impl(ctx):
   """Implements the go_library() rule."""
 
-  sources = set(ctx.files.srcs)
-  go_srcs = set([s for s in sources if s.basename.endswith('.go')])
+  sources = depset(ctx.files.srcs)
+  go_srcs = depset([s for s in sources if s.basename.endswith('.go')])
   asm_srcs = [s for s in sources if s.basename.endswith('.s') or s.basename.endswith('.S')]
   asm_hdrs = [s for s in sources if s.basename.endswith('.h')]
-  deps = ctx.attr.deps
+  deps = list(ctx.attr.deps)
   dep_runfiles = [d.data_runfiles for d in deps]
 
   cgo_object = None
@@ -252,7 +252,7 @@ def go_library_impl(ctx):
   if not go_srcs:
     fail("may not be empty", "srcs")
 
-  transitive_cgo_deps = set([], order="link")
+  transitive_cgo_deps = depset([], order="topological")
   if cgo_object:
     dep_runfiles += [cgo_object.data_runfiles]
     transitive_cgo_deps += cgo_object.cgo_deps
@@ -278,8 +278,8 @@ def go_library_impl(ctx):
   _emit_go_compile_action(ctx,
       sources = go_srcs,
       deps = deps,
-      libpaths = transitive_go_library_paths, 
-      out_object = out_object, 
+      libpaths = transitive_go_library_paths,
+      out_object = out_object,
       gc_goopts = gc_goopts,
   )
   _emit_go_pack_action(ctx, out_lib, [out_object] + extra_objects)
@@ -294,7 +294,7 @@ def go_library_impl(ctx):
 
   return struct(
     label = ctx.label,
-    files = set([out_lib]),
+    files = depset([out_lib]),
     runfiles = runfiles,
     go_sources = go_srcs,
     asm_sources = asm_srcs,
@@ -390,7 +390,7 @@ def _emit_go_link_action(ctx, transitive_go_library_paths, transitive_go_librari
 
   link_cmd = [
       ctx.file.go_tool.path,
-      "tool", "link", 
+      "tool", "link",
       "-L", "."
   ]
   for path in transitive_go_library_paths:
@@ -433,6 +433,12 @@ def _emit_go_link_action(ctx, transitive_go_library_paths, transitive_go_librari
       ]
 
   cmds += [' '.join(link_cmd)]
+
+  # For compatibility. Since Bazel 0.7.0, the variable lib created within line
+  # 412 does not "leak" to current scope any more. However, we cannot use
+  # depset.to_list() as that would break Bazel 0.5.4. Hence the weird solution.
+  for l in libs:
+    lib = l
 
   f = _emit_generate_params_action(cmds, ctx, lib.basename + ".GoLinkFile.params")
 
@@ -530,7 +536,7 @@ def go_test_impl(ctx):
   runfiles = ctx.runfiles(files = [ctx.outputs.executable])
   runfiles = runfiles.merge(lib_result.runfiles)
   return struct(
-      files = set([ctx.outputs.executable]),
+      files = depset([ctx.outputs.executable]),
       runfiles = runfiles,
   )
 
@@ -711,7 +717,7 @@ def _cgo_filter_srcs_impl(ctx):
       mnemonic = "CgoFilterSrcs",
   )
   return struct(
-      files = set(dsts),
+      files = depset(dsts),
   )
 
 _cgo_filter_srcs = rule(
@@ -728,14 +734,14 @@ _cgo_filter_srcs = rule(
         ),
     },
     fragments = ["cpp"],
-)    
+)
 
 def _cgo_codegen_impl(ctx):
   go_srcs = ctx.files.srcs
   srcs = go_srcs + ctx.files.c_hdrs
-  linkopts = ctx.attr.linkopts
+  linkopts = list(ctx.attr.linkopts)
   copts = ctx.fragments.cpp.c_options + ctx.attr.copts
-  deps = set([], order="link")
+  deps = depset([], order="topological")
   for d in ctx.attr.deps:
     srcs += list(d.cc.transitive_headers)
     deps += d.cc.libs
@@ -812,7 +818,7 @@ def _cgo_codegen_impl(ctx):
   )
   return struct(
       label = ctx.label,
-      files = set(ctx.outputs.outs),
+      files = depset(ctx.outputs.outs),
       cgo_deps = deps,
   )
 
@@ -925,7 +931,7 @@ def _cgo_import_impl(ctx):
       env = go_environment_vars(ctx),
   )
   return struct(
-      files = set([ctx.outputs.out]),
+      files = depset([ctx.outputs.out]),
   )
 
 _cgo_import = rule(
@@ -1023,7 +1029,7 @@ def _cgo_object_impl(ctx):
   runfiles = ctx.runfiles(collect_data = True)
   runfiles = runfiles.merge(ctx.attr.src.data_runfiles)
   return struct(
-      files = set([ctx.outputs.out]),
+      files = depset([ctx.outputs.out]),
       cgo_obj = ctx.outputs.out,
       cgo_deps = ctx.attr.cgogen.cgo_deps,
       runfiles = runfiles,
