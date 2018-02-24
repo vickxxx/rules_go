@@ -189,6 +189,10 @@ _GO_VERSIONS_SHA256 = {
         'linux': '1862f4c3d3907e59b04a757cfda0ea7aa9ef39274af99a784f5be843c80c6772',
         'darwin': 'f20b92bc7d4ab22aa18270087c478a74463bd64a893a94264434a38a4b167c05',
     },
+    '1.9.2': {
+        'linux': 'de874549d9a8d8d8062be05808509c09a88a248e77ec14eb77453530829ac02b',
+        'darwin': '73fd5840d55f5566d8db6c0ffdd187577e8ebe650c783f68bd27cbf95bde6743',
+    },
 }
 
 def go_repositories(
@@ -197,7 +201,7 @@ def go_repositories(
     go_darwin = None):
 
   if not go_version and not go_linux and not go_darwin:
-    go_version = "1.8.3"
+    go_version = "1.9.2"
 
   if go_version:
     if go_linux:
