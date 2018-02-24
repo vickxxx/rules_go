@@ -18,7 +18,7 @@ import (
 	"path/filepath"
 )
 
-const workspaceFile = "WORKSPACE"
+var workspaceFile = "WORKSPACE"
 
 // Find searches from the given dir and up for the WORKSPACE file
 // returning the directory containing it, or an error if none found in the tree.

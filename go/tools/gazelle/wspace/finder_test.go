@@ -24,6 +24,7 @@ type testCase struct {
 }
 
 func TestFind(t *testing.T) {
+	workspaceFile = "WORKSPACE_TestFind"
 	tmp, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatal(err)

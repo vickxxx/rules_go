@@ -338,9 +338,11 @@ def _gc_goopts(ctx):
     gc_goopts += ctx.attr.library.gc_goopts
   return gc_goopts
 
-def _gc_linkopts(ctx):
-  gc_linkopts = [ctx.expand_make_variables("gc_linkopts", f, {})
-                 for f in ctx.attr.gc_linkopts]
+def _gc_linkopts(ctx, opts_override=None):
+  opts = ctx.attr.gc_linkopts
+  if opts_override:
+    opts = opts_override
+  gc_linkopts = [ctx.expand_make_variables("gc_linkopts", f, {}) for f in opts]
   for k, v in ctx.attr.x_defs.items():
     gc_linkopts += ["-X", "%s='%s'" % (k, v)]
   return gc_linkopts
@@ -454,6 +456,14 @@ def _emit_go_link_action(ctx, transitive_go_library_paths, transitive_go_librari
 def go_binary_impl(ctx):
   """go_binary_impl emits actions for compiling and linking a go executable."""
   lib_result = go_library_impl(ctx)
+
+  # NOTE(yi.sun): we always deploy go binaries in docker, which requires the
+  # binary to be statically linked. However, mac os x does not support static
+  # linking, so the flags must be turned off when compiling on mac.
+  gc_linkopts = ctx.attr.gc_linkopts
+  if not _is_darwin_cpu(ctx):  # assume it is linux.
+    gc_linkopts = gc_linkopts + ["-linkmode", "external", "-extldflags", "-static"]
+
   _emit_go_link_action(
     ctx,
     transitive_go_libraries=lib_result.transitive_go_libraries,
@@ -461,7 +471,7 @@ def go_binary_impl(ctx):
     cgo_deps=lib_result.transitive_cgo_deps,
     libs=lib_result.files,
     executable=ctx.outputs.executable,
-    gc_linkopts=_gc_linkopts(ctx))
+    gc_linkopts=_gc_linkopts(ctx, gc_linkopts))
 
   return struct(
       files = depset([ctx.outputs.executable]),
