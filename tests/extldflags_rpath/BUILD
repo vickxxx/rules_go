@@ -11,6 +11,7 @@ go_binary(
         "-extldflags",
         "-Wl,-rpath -Wl,/bar",
     ],
+    linux_disable_static_linking = True,
 )
 
 sh_test(

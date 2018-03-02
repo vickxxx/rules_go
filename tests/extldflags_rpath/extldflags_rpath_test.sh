@@ -9,10 +9,7 @@ binaryfile=$1
 os=$(uname)
 case $os in
   Linux)
-    # NOTE(yi.sun): since we will always statically link binaries in linux,
-    # the binary will not contain a dynamic section.
-    output='/foo /bar'
-    #output=$(readelf --dynamic "$binaryfile")
+    output=$(readelf --dynamic "$binaryfile")
     ;;
   Darwin)
     output=$(otool -l "$binaryfile")

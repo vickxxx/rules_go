@@ -457,11 +457,11 @@ def go_binary_impl(ctx):
   """go_binary_impl emits actions for compiling and linking a go executable."""
   lib_result = go_library_impl(ctx)
 
-  # NOTE(yi.sun): we always deploy go binaries in docker, which requires the
-  # binary to be statically linked. However, mac os x does not support static
-  # linking, so the flags must be turned off when compiling on mac.
+  # NOTE(yi.sun): We always deploy go binaries in linux docker. In such case, a
+  # statically linked binary results in much smaller docker size and hence is
+  # preferred, unless that we have to link against some third party .so file.
   gc_linkopts = ctx.attr.gc_linkopts
-  if not _is_darwin_cpu(ctx):  # assume it is linux.
+  if not _is_darwin_cpu(ctx) and not ctx.attr.linux_disable_static_linking:
     gc_linkopts = gc_linkopts + ["-linkmode", "external", "-extldflags", "-static"]
 
   _emit_go_link_action(
@@ -662,7 +662,19 @@ go_library = rule(
 
 go_binary = rule(
     go_binary_impl,
-    attrs = go_library_attrs + _crosstool_attrs + go_link_attrs,
+    attrs = go_library_attrs + _crosstool_attrs + go_link_attrs + {
+      "linux_disable_static_linking": attr.bool(doc="""
+If true, create dynamically linked binaries in linux.
+
+By default, under linux the binaries are statically linked, which makes it
+easy for deployment. However, there are several cases where we need to link
+against third party .so files, e.g., libtensorflow.so. In such case, users
+should set this flag to true and manually copy all the required libraries
+to the deployment environment.
+
+This flag has no effect on Mac OS X, as static linking is not supported anyway.
+"""),
+    },
     executable = True,
     fragments = ["cpp"],
 )
