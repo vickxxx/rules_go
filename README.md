@@ -26,7 +26,6 @@ change in buildifier, one of our dependencies. You can upgrade to `0.3.4`,
 * [Repository rules](#repository-rules)
   * [go_repositories](#go_repositories)
   * [go_repository](#go_repository)
-  * [new_go_repository](#new_go_repository)
 * [Build rules](#build-rules)
   * [go_prefix](#go_prefix)
   * [go_library](#go_library)

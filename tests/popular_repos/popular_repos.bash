@@ -16,7 +16,7 @@
 
 # This test ensures we can build and test popular Go repositories without
 # manually writing BUILD files. It sets up a WORKSPACE file with several
-# new_go_repository rules, then builds everything in each repository.
+# go_repository rules, then builds everything in each repository.
 
 set -euo pipefail
 

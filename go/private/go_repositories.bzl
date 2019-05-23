@@ -12,57 +12,64 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//go/private:go_repository.bzl", "go_repository", "new_go_repository")
-load("//go/private:bzl_format.bzl", "bzl_format_repositories")
+load("//go/private:go_repository.bzl", "go_repository")
 
-repository_tool_deps = {
-    'buildtools': struct(
-        importpath = 'github.com/bazelbuild/buildtools',
-        repo = 'https://github.com/bazelbuild/buildtools',
-        commit = 'd5dcc29f2304aa28c29ecb8337d52bb9de908e0c',
+_REPOSITORY_TOOL_DEPS = {
+    "buildtools": struct(
+        importpath = "github.com/bazelbuild/buildtools",
+        repo = "https://github.com/bazelbuild/buildtools",
+        sha256 = "efa3978c6e8ed8aae713943017d2c8d559a9c8a6de0239f0972e0a18cde92e64",
+        commit = "d5dcc29f2304aa28c29ecb8337d52bb9de908e0c",
     ),
-    'tools': struct(
-        importpath = 'golang.org/x/tools',
-        repo = 'https://github.com/golang/tools',
-        commit = '3d92dd60033c312e3ae7cac319c792271cf67e37',
-    )
+    "tools": struct(
+        importpath = "golang.org/x/tools",
+        repo = "https://github.com/golang/tools",
+        sha256 = "e4b020492a6b97c006473c1bdb03bb719e0558047609126123acdfb20d2c1acf",
+        commit = "3d92dd60033c312e3ae7cac319c792271cf67e37",
+    ),
 }
 
 def go_internal_tools_deps():
-  """only for internal use in rules_go"""
-  go_repository(
-      name = "com_github_bazelbuild_buildtools",
-      commit = repository_tool_deps['buildtools'].commit,
-      importpath = repository_tool_deps['buildtools'].importpath,
-  )
-
-  new_go_repository(
-      name = "org_golang_x_tools",
-      commit = repository_tool_deps['tools'].commit,
-      importpath = repository_tool_deps['tools'].importpath,
-  )
-  bzl_format_repositories()
+    """only for internal use in rules_go"""
+    go_repository(
+        name = "com_github_bazelbuild_buildtools",
+        commit = _REPOSITORY_TOOL_DEPS["buildtools"].commit,
+        sha256 = _REPOSITORY_TOOL_DEPS["buildtools"].sha256,
+        importpath = _REPOSITORY_TOOL_DEPS["buildtools"].importpath,
+    )
+    go_repository(
+        name = "org_golang_x_tools",
+        commit = _REPOSITORY_TOOL_DEPS["tools"].commit,
+        sha256 = _REPOSITORY_TOOL_DEPS["tools"].sha256,
+        importpath = _REPOSITORY_TOOL_DEPS["tools"].importpath,
+    )
 
 def _fetch_repository_tools_deps(ctx, goroot, gopath):
-  for name, dep in repository_tool_deps.items():
-    result = ctx.execute(['mkdir', '-p', ctx.path('src/' + dep.importpath)])
+    for name, dep in _REPOSITORY_TOOL_DEPS.items():
+        result = ctx.execute(["mkdir", "-p", ctx.path("src/" + dep.importpath)])
+        if result.return_code:
+            fail("failed to create directory: %s" % result.stderr)
+        archive = name + ".tar.gz"
+        ctx.download_and_extract(
+            url = "%s/archive/%s.tar.gz" % (dep.repo, dep.commit),
+            output = "src/%s" % dep.importpath,
+            stripPrefix = "%s-%s" % (name, dep.commit),
+            sha256 = dep.sha256,
+        )
+
+    result = ctx.execute([
+        "env",
+        "GOROOT=%s" % goroot,
+        "GOPATH=%s" % gopath,
+        "PATH=%s/bin" % goroot,
+        "go",
+        "generate",
+        "github.com/bazelbuild/buildtools/build",
+    ])
     if result.return_code:
-      fail('failed to create directory: %s' % result.stderr)
-    archive = name + '.tar.gz'
-    ctx.download(
-        url = '%s/archive/%s.tar.gz' % (dep.repo, dep.commit),
-        output = archive)
-    ctx.execute([
-        'tar', '-C', 'src/%s' % dep.importpath, '-xf', archive, '--strip', '1'])
+        fail("failed to go generate: %s" % result.stderr)
 
-  result = ctx.execute([
-      'env', 'GOROOT=%s' % goroot, 'GOPATH=%s' % gopath, 'PATH=%s/bin' % goroot,
-      'go', 'generate', 'github.com/bazelbuild/buildtools/build'])
-  if result.return_code:
-    fail("failed to go generate: %s" % result.stderr)
-
-_GO_REPOSITORY_TOOLS_BUILD_FILE = """
-package(default_visibility = ["//visibility:public"])
+_GO_REPOSITORY_TOOLS_BUILD_FILE = """package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "fetch_repo",
@@ -76,24 +83,30 @@ filegroup(
 """
 
 def _go_repository_tools_impl(ctx):
-  go_tool = ctx.path(ctx.attr._go_tool)
-  goroot = go_tool.dirname.dirname
-  gopath = ctx.path('')
-  prefix = "github.com/bazelbuild/rules_go/" + ctx.attr._tools.package
-  src_path = ctx.path(ctx.attr._tools).dirname
+    go_tool = ctx.path(ctx.attr._go_tool)
+    goroot = go_tool.dirname.dirname
+    gopath = ctx.path("")
+    prefix = "github.com/bazelbuild/rules_go/" + ctx.attr._tools.package
+    src_path = ctx.path(ctx.attr._tools).dirname
 
-  _fetch_repository_tools_deps(ctx, goroot, gopath)
+    _fetch_repository_tools_deps(ctx, goroot, gopath)
 
-  for t, pkg in [("gazelle", 'gazelle/gazelle'), ("fetch_repo", "fetch_repo")]:
-    ctx.symlink("%s/%s" % (src_path, t), "src/%s/%s" % (prefix, t))
+    for t, pkg in [("gazelle", "gazelle/gazelle"), ("fetch_repo", "fetch_repo")]:
+        ctx.symlink("%s/%s" % (src_path, t), "src/%s/%s" % (prefix, t))
 
-    result = ctx.execute([
-        'env', 'GOROOT=%s' % goroot, 'GOPATH=%s' % gopath,
-        go_tool, "build",
-        "-o", ctx.path("bin/" + t), "%s/%s" % (prefix, pkg)])
-    if result.return_code:
-      fail("failed to build %s: %s" % (t, result.stderr))
-  ctx.file('BUILD', _GO_REPOSITORY_TOOLS_BUILD_FILE, False)
+        result = ctx.execute([
+            "env",
+            "GOROOT=%s" % goroot,
+            "GOPATH=%s" % gopath,
+            go_tool,
+            "build",
+            "-o",
+            ctx.path("bin/" + t),
+            "%s/%s" % (prefix, pkg),
+        ])
+        if result.return_code:
+            fail("failed to build %s: %s" % (t, result.stderr))
+    ctx.file("BUILD.bazel", _GO_REPOSITORY_TOOLS_BUILD_FILE, False)
 
 _go_repository_tools = repository_rule(
     _go_repository_tools_impl,
@@ -111,131 +124,83 @@ _go_repository_tools = repository_rule(
     },
 )
 
-GO_TOOLCHAIN_BUILD_FILE = """
-load("@io_bazel_rules_go//go/private:go_root.bzl", "go_root")
+_GO_TOOLCHAIN_BUILD_FILE = """load("@io_bazel_rules_go//go/private:go_root.bzl", "go_root")
 
-package(
-  default_visibility = [ "//visibility:public" ])
+package(default_visibility = ["//visibility:public"])
 
 filegroup(
-  name = "toolchain",
-  srcs = glob(["bin/*", "pkg/**", ]),
+    name = "toolchain",
+    srcs = glob(["bin/*", "pkg/**",]),
 )
 
 filegroup(
-  name = "go_tool",
-  srcs = [ "bin/go" ],
+    name = "go_tool",
+    srcs = ["bin/go"],
 )
 
 filegroup(
-  name = "go_src",
-  srcs = glob(["src/**"]),
+    name = "go_src",
+    srcs = glob(["src/**"]),
 )
 
 filegroup(
-  name = "go_include",
-  srcs = [ "pkg/include" ],
+    name = "go_include",
+    srcs = ["pkg/include"],
 )
 
 go_root(
-  name = "go_root",
-  path = "{goroot}",
+    name = "go_root",
+    path = "{goroot}",
 )
 """
 
-def _go_repository_select_impl(ctx):
-  os_name = ctx.os.name
+def _check_bazel_version():
+    version = native.bazel_version
+    if not version.startswith("0.18.") and not version.startswith("0.17."):
+        fail("Bazel version %s installed on your machine is not supported " +
+             "by the current Bazel toolchain. Please re-install Bazel " +
+             "version 0.18.1 from " +
+             "https://github.com/bazelbuild/bazel/releases/tag/0.18.1" %
+             version)
+    print("Building with Bazel version", version)
 
-  # 1. Configure the goroot path
-  if os_name == 'linux':
-    go_version = ctx.attr.go_linux_version
-  elif os_name == 'mac os x':
-    go_version = ctx.attr.go_darwin_version
-  else:
-    fail("Unsupported operating system: " + os_name)
-  if go_version == None:
-    fail("No Go toolchain provided for host operating system: " + os_name)
-  goroot = ctx.path(go_version).dirname
+def _find_goroot(ctx):
+    if ctx.which("go"):  # go is available through path
+        result = ctx.execute(["go", "env", "GOROOT"])
+        if result.return_code != 0:
+            fail("Failed to execute `go env GOROOT`, error:", result.stderr)
+        return ctx.path(result.stdout.strip())
 
-  # 2. Create the symlinks and write the BUILD file.
-  gobin = goroot.get_child("bin")
-  gopkg = goroot.get_child("pkg")
-  gosrc = goroot.get_child("src")
-  ctx.symlink(gobin, "bin")
-  ctx.symlink(gopkg, "pkg")
-  ctx.symlink(gosrc, "src")
+    # If go is not installed in the default way, require GOROOT to be set.
+    if "GOROOT" not in ctx.os.environ:
+        fail("Golang is not installed at default location, you must set $GOROOT to point to the local golang installation directory.")
+    return ctx.path(ctx.os.environ["GOROOT"].strip())
 
-  ctx.file("BUILD", GO_TOOLCHAIN_BUILD_FILE.format(
-    goroot = goroot,
-  ))
+def _go_local_sdk_impl(ctx):
+    _check_bazel_version()
 
+    goroot = _find_goroot(ctx)
+    result = ctx.execute(["go", "version"])
+    if result.return_code != 0:
+        fail("Failed to execute `go version`, error:", result.stderr)
+    go_version = result.stdout.strip()
+    print("Using golang installed at", goroot, "version", go_version)
 
-_go_repository_select = repository_rule(
-    _go_repository_select_impl,
-    attrs = {
-        "go_linux_version": attr.label(
-            allow_files = True,
-            single_file = True,
-        ),
-        "go_darwin_version": attr.label(
-            allow_files = True,
-            single_file = True,
-        ),
-    },
+    gobin = goroot.get_child("bin")
+    gopkg = goroot.get_child("pkg")
+    gosrc = goroot.get_child("src")
+    ctx.symlink(gobin, "bin")
+    ctx.symlink(gopkg, "pkg")
+    ctx.symlink(gosrc, "src")
+    ctx.file("BUILD.bazel", _GO_TOOLCHAIN_BUILD_FILE.format(
+        goroot = goroot,
+    ))
+
+_go_local_sdk = repository_rule(
+    _go_local_sdk_impl,
+    environ = ["GOROOT"],
 )
 
-_GO_VERSIONS_SHA256 = {
-    '1.8.3': {
-        'linux': '1862f4c3d3907e59b04a757cfda0ea7aa9ef39274af99a784f5be843c80c6772',
-        'darwin': 'f20b92bc7d4ab22aa18270087c478a74463bd64a893a94264434a38a4b167c05',
-    },
-    '1.9.2': {
-        'linux': 'de874549d9a8d8d8062be05808509c09a88a248e77ec14eb77453530829ac02b',
-        'darwin': '73fd5840d55f5566d8db6c0ffdd187577e8ebe650c783f68bd27cbf95bde6743',
-    },
-}
-
-def go_repositories(
-    go_version = None,
-    go_linux = None,
-    go_darwin = None):
-
-  if not go_version and not go_linux and not go_darwin:
-    go_version = "1.9.2"
-
-  if go_version:
-    if go_linux:
-      fail("go_repositories: go_version and go_linux can't both be set")
-    if go_darwin:
-      fail("go_repositories: go_version and go_darwin can't both be set")
-    if go_version not in _GO_VERSIONS_SHA256:
-      fail("go_repositories: unsupported version %s; supported versions are %s" %
-           (go_version, " ".join(_GO_VERSIONS_SHA256.keys())))
-    native.new_http_archive(
-        name = "golang_linux_amd64",
-        url = "https://storage.googleapis.com/golang/go%s.linux-amd64.tar.gz" % go_version,
-        build_file_content = "",
-        sha256 = _GO_VERSIONS_SHA256[go_version]["linux"],
-        strip_prefix = "go",
-    )
-    native.new_http_archive(
-        name = "golang_darwin_amd64",
-        url = "https://storage.googleapis.com/golang/go%s.darwin-amd64.tar.gz" % go_version,
-        build_file_content = "",
-        sha256 = _GO_VERSIONS_SHA256[go_version]["darwin"],
-        strip_prefix = "go",
-    )
-    go_linux = "@golang_linux_amd64"
-    go_darwin = "@golang_darwin_amd64"
-
-  go_linux_version = go_linux + "//:VERSION" if go_linux else None
-  go_darwin_version = go_darwin + "//:VERSION" if go_darwin else None
-
-  _go_repository_select(
-      name = "io_bazel_rules_go_toolchain",
-      go_linux_version = go_linux_version,
-      go_darwin_version = go_darwin_version,
-  )
-  _go_repository_tools(
-      name = "io_bazel_rules_go_repository_tools",
-  )
+def go_repositories():
+    _go_local_sdk(name = "io_bazel_rules_go_toolchain")
+    _go_repository_tools(name = "io_bazel_rules_go_repository_tools")
