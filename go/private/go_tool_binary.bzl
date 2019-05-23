@@ -13,32 +13,32 @@
 # limitations under the License.
 
 def go_tool_binary(name, srcs):
-  """Builds a Go program using `go build`.
+    """Builds a Go program using `go build`.
 
-  This is used instead of `go_binary` for tools that are executed inside
-  actions emitted by the go rules. This avoids a bootstrapping problem. This
-  is very limited and only supports sources in the main package with no
-  dependencies outside the standard library.
+    This is used instead of `go_binary` for tools that are executed inside
+    actions emitted by the go rules. This avoids a bootstrapping problem. This
+    is very limited and only supports sources in the main package with no
+    dependencies outside the standard library.
 
-  Args:
-    name: A unique name for this rule.
-    srcs: list of pure Go source files. No cgo allowed.
-  """
-  native.genrule(
-      name = name,
-      srcs = srcs + ["//go/toolchain:go_src"],
-      outs = [name + "_bin"],
-      cmd = " ".join([
-          "GOROOT=$$(cd $$(dirname $(location //go/toolchain:go_tool))/..; pwd)",
-          "$(location //go/toolchain:go_tool)",
-          "build",
-          "-o",
-          "$@",
-      ] + ["$(location %s)" % s for s in srcs]),
-      executable = True,
-      tools = [
-        "//go/toolchain",
-        "//go/toolchain:go_tool",
-      ],
-      visibility = ["//visibility:public"],
-  )
+    Args:
+      name: A unique name for this rule.
+      srcs: list of pure Go source files. No cgo allowed.
+    """
+    native.genrule(
+        name = name,
+        srcs = srcs + ["//go/toolchain:go_src"],
+        outs = [name + "_bin"],
+        cmd = " ".join([
+            "GOROOT=$$(cd $$(dirname $(location //go/toolchain:go_tool))/..; pwd)",
+            "$(location //go/toolchain:go_tool)",
+            "build",
+            "-o",
+            "$@",
+        ] + ["$(location %s)" % s for s in srcs]),
+        executable = True,
+        tools = [
+            "//go/toolchain",
+            "//go/toolchain:go_tool",
+        ],
+        visibility = ["//visibility:public"],
+    )

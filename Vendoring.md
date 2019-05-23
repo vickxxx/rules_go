@@ -26,9 +26,9 @@ repos.
 
 The other option for using external libraries is to import them in your
 `WORKSPACE` file. You can use
-the [`new_go_repository`](README.md#new_go_repository) rule to import
+the [`go_repository`](README.md#go_repository) rule to import
 repositories that conform the the normal Go directory conventions. This is
-similar to `new_git_repository`, but it automatically generates `BUILD` files
+similar to `git_repository`, but it automatically generates `BUILD` files
 for you using [gazelle](go/tools/gazelle/README.md).
 
 You can use [`go_repository`](README.md#go_repository) if the project you're
@@ -36,16 +36,13 @@ importing already has `BUILD` files. This is like `git_repository` but it
 recognizes importpath redirection.
 
 If you prefer to write your own `BUILD` files for dependencies, you can still
-use `new_git_repository`. Be aware that you can only specify one `BUILD` file
+use `git_repository`. Be aware that you can only specify one `BUILD` file
 for the top-level package.
-
-Experimental: some users may find [wtool](go/tools/wtool/README.md) helpful for
-managing new_go_repository entries in their WORKSPACE file.
 
 ### Example
 
 Here is an example from a `WORKSPACE` file using the repository method for
-`github.com/golang/glog`. 
+`github.com/golang/glog`.
 
 ``` bzl
 # Import Go rules and toolchain.
@@ -57,7 +54,7 @@ git_repository(
 load("@io_bazel_rules_go//go:def.bzl", "go_repositories")
 
 # Import Go dependencies.
-new_go_repository(
+go_repository(
     name = "com_github_golang_glog",
     importpath = "github.com/golang/glog",
     commit = "23def4e6c14b4da8ac2ed8007337bc5eb5007998",

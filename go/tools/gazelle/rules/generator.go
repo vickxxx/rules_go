@@ -50,7 +50,7 @@ type ExternalResolver int
 
 const (
 	// External resolves external packages as external packages with
-	// new_go_repository.
+	// go_repository.
 	External ExternalResolver = iota
 	// Vendored resolves external packages as vendored packages in vendor/.
 	Vendored

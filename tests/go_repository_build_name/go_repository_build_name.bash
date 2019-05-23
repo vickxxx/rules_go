@@ -14,11 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This script tests that new_go_repository can be used to build a
+# This script tests that go_repository can be used to build a
 # package named "build" without explicitly specifying
 # "build_file_name". In #144, Gazelle would fail on case insensitive
 # file systems because "build" looks the same as "BUILD". In
-# new_go_repository, Gazelle should name files "BUILD.bazel" by
+# go_repository, Gazelle should name files "BUILD.bazel" by
 # default.
 
 set -euo pipefail

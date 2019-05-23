@@ -21,8 +21,8 @@
 # info provider.
 
 def _go_prefix_impl(ctx):
-  """go_prefix_impl provides the go prefix to use as a transitive info provider."""
-  return struct(go_prefix = ctx.attr.prefix)
+    """go_prefix_impl provides the go prefix to use as a transitive info provider."""
+    return struct(go_prefix = ctx.attr.prefix)
 
 _go_prefix_rule = rule(
     _go_prefix_impl,
@@ -32,8 +32,9 @@ _go_prefix_rule = rule(
 )
 
 def go_prefix(prefix):
-  """go_prefix sets the Go import name to be used for this workspace."""
-  _go_prefix_rule(name = "go_prefix",
-    prefix = prefix,
-    visibility = ["//visibility:public" ]
-  )
+    """go_prefix sets the Go import name to be used for this workspace."""
+    _go_prefix_rule(
+        name = "go_prefix",
+        prefix = prefix,
+        visibility = ["//visibility:public"],
+    )
