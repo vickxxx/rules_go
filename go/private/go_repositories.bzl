@@ -172,19 +172,27 @@ def _find_goroot(ctx):
         return ctx.path(result.stdout.strip())
 
     # If go is not installed in the default way, require GOROOT to be set.
-    if "GOROOT" not in ctx.os.environ:
-        fail("Golang is not installed at default location, you must set $GOROOT to point to the local golang installation directory.")
-    return ctx.path(ctx.os.environ["GOROOT"].strip())
+    if "GOROOT" in ctx.os.environ:
+        return ctx.path(ctx.os.environ["GOROOT"].strip())
+
+    # To be compatible with Liulishuo's linux docker, as the docker installs
+    # Golang in /usr/lib/go
+    result = ctx.execute(["test", "-f", "/usr/lib/go/bin/go"])
+    if result.return_code == 0:  # file exist
+        return ctx.path("/usr/lib/go")
+
+    fail("Golang is not installed at default location, you must set $GOROOT to point to the local golang installation directory.")
 
 def _go_local_sdk_impl(ctx):
     _check_bazel_version()
 
     goroot = _find_goroot(ctx)
-    result = ctx.execute(["go", "version"])
+    go_bin = goroot.get_child("bin").get_child("go")
+    result = ctx.execute([go_bin, "version"])
     if result.return_code != 0:
         fail("Failed to execute `go version`, error:", result.stderr)
     go_version = result.stdout.strip()
-    print("Using golang installed at", goroot, "version", go_version)
+    print("Using golang installed at %s, version [%s]" % (goroot, go_version))
 
     gobin = goroot.get_child("bin")
     gopkg = goroot.get_child("pkg")
