@@ -24,17 +24,22 @@ def go_tool_binary(name, srcs):
       name: A unique name for this rule.
       srcs: list of pure Go source files. No cgo allowed.
     """
-    native.genrule(
-        name = name,
-        srcs = srcs + ["//go/toolchain:go_src"],
-        outs = [name + "_bin"],
-        cmd = " ".join([
+    #NOTE(yuan): we create a temp dir here to pass go_tool_binary build cause go 1.12+ requires $GOCACHE env variable.
+    #TODO(yuan): update rules_go to latest
+    gocache = "GOCACHE=$$(cd $$(dirname $(location //go/toolchain:go_tool))/..; mkdir .gocache; cd .gocache; pwd)"
+    cmd =  " ".join([
             "GOROOT=$$(cd $$(dirname $(location //go/toolchain:go_tool))/..; pwd)",
+            gocache,
             "$(location //go/toolchain:go_tool)",
             "build",
             "-o",
             "$@",
-        ] + ["$(location %s)" % s for s in srcs]),
+        ] + ["$(location %s)" % s for s in srcs])
+    native.genrule(
+        name = name,
+        srcs = srcs + ["//go/toolchain:go_src"],
+        outs = [name + "_bin"],
+        cmd = cmd,
         executable = True,
         tools = [
             "//go/toolchain",
