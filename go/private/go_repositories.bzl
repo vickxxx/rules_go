@@ -206,7 +206,7 @@ def _go_local_sdk_impl(ctx):
 
 _go_local_sdk = repository_rule(
     _go_local_sdk_impl,
-    environ = ["GOROOT"],
+    environ = ["GOROOT", "GOCACHE"],
 )
 
 def go_repositories():
