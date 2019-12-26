@@ -43,7 +43,7 @@ def _generate_build_files(ctx):
         # If a repository already has a WORKSPACE file, it already is a Bazel
         # repository. We will not generate BUILD file for it.
         path = ctx.path("WORKSPACE")
-        if path.exists:
+        if path.exists and ctx.attr.importpath != "git.llsapp.com/pb/common-go":
             print("Will not generate build files for Bazel repository", ctx.attr.importpath)
             return
     result = ctx.execute([
